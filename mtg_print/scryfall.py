@@ -78,11 +78,15 @@ class ScryfallClient:
         )
 
     def get_card_by_name(self, name: str, set_code: str | None = None) -> CardPrinting:
-        params = {"exact": name}
         if set_code:
-            params["set"] = set_code.lower()
-        data = self._get("/cards/named", params, card_name=name)
-        return self._parse_printing(data)
+            params = {"exact": name, "set": set_code.lower()}
+            data = self._get("/cards/named", params, card_name=name)
+            return self._parse_printing(data)
+
+        printings = self.search_printings(name)
+        if not printings:
+            raise CardNotFoundError(name)
+        return printings[0]
 
     def search_printings(self, card_name: str) -> list[CardPrinting]:
         params = {"q": f'!"{card_name}"', "unique": "prints", "order": "released", "dir": "asc"}
