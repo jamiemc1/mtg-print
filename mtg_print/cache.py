@@ -44,7 +44,10 @@ class ImageCache:
             evicted += 1
 
         if evicted > 0:
-            print(f"Cache exceeded {self.max_size_gb} GB, evicted {evicted} old images", file=sys.stderr)
+            print(
+                f"Cache exceeded {self.max_size_gb} GB, evicted {evicted} old images",
+                file=sys.stderr,
+            )
 
         return evicted
 

@@ -4,7 +4,9 @@ from pathlib import Path
 from mtg_print.models import DeckEntry, Decklist
 
 PATTERNS = [
-    re.compile(r"^(\d+)x?\s+(.+?)\s*\((\w+)\)\s*\d*\s*(?:\*F\*)?$"),  # Moxfield/Arena/Manabox: 4 Card (SET) 123 *F*
+    re.compile(
+        r"^(\d+)x?\s+(.+?)\s*\((\w+)\)\s*\d*\s*(?:\*F\*)?$"
+    ),  # Moxfield/Arena/Manabox: 4 Card (SET) 123 *F*
     re.compile(r"^(\d+)x?\s+(.+?)\s*<(\w+)>$"),  # MTGGoldfish: 4 Card <set>
     re.compile(r"^(\d+)x?\s+(.+?)$"),  # Simple: 4 Card or 4x Card
 ]
@@ -15,6 +17,25 @@ IGNORE_PATTERNS = [
     re.compile(r"^(Built with|Exported from|Shared via|//)"),
     re.compile(r"^\s*$"),
 ]
+
+BASIC_LANDS = {
+    "Forest",
+    "Island",
+    "Plains",
+    "Mountain",
+    "Swamp",
+    "Wastes",
+    "Snow-Covered Forest",
+    "Snow-Covered Island",
+    "Snow-Covered Plains",
+    "Snow-Covered Mountain",
+    "Snow-Covered Swamp",
+    "Snow-Covered Wastes",
+}
+
+
+def is_basic_land(name: str) -> bool:
+    return name in BASIC_LANDS
 
 
 def should_ignore_line(line: str) -> bool:
@@ -37,15 +58,17 @@ def parse_line(line: str) -> DeckEntry | None:
     return None
 
 
-def parse_decklist(path: Path) -> Decklist:
+def parse_decklist(path: Path, skip_basics: bool = True) -> Decklist:
     with open(path) as f:
         lines = f.readlines()
-    return parse_decklist_string("\n".join(lines))
+    return parse_decklist_string("\n".join(lines), skip_basics=skip_basics)
 
 
-def parse_decklist_string(content: str) -> Decklist:
+def parse_decklist_string(content: str, skip_basics: bool = True) -> Decklist:
     entries: list[DeckEntry] = []
     for line in content.splitlines():
         if entry := parse_line(line):
+            if skip_basics and is_basic_land(entry.name):
+                continue
             entries.append(entry)
     return Decklist(entries=entries)
