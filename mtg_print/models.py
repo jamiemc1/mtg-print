@@ -6,6 +6,7 @@ from datetime import date
 class CardFace:
     name: str
     image_uri_png: str
+    image_uri_small: str | None = None
 
 
 @dataclass

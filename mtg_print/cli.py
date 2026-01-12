@@ -5,10 +5,11 @@ import typer
 
 from mtg_print.cache import ImageCache
 from mtg_print.decklist import parse_decklist
-from mtg_print.scryfall import ScryfallClient
+from mtg_print.scryfall import CardNotFoundError, ScryfallClient
 from mtg_print.sheet import SheetGenerator
+from mtg_print.terminal import display_image
 
-app = typer.Typer(help="MTG proxy printing tool")
+app = typer.Typer(help="MTG proxy printing tool", no_args_is_help=True)
 
 
 @app.command()
@@ -36,7 +37,11 @@ def build(
     with typer.progressbar(decklist.entries, label="Fetching cards") as entries:
         for entry in entries:
             set_code = overrides.get(entry.name, entry.set_override)
-            printing = client.get_card_by_name(entry.name, set_code)
+            try:
+                printing = client.get_card_by_name(entry.name, set_code)
+            except CardNotFoundError:
+                typer.echo(f"\nCard not found: '{entry.name}'", err=True)
+                raise typer.Exit(1)
 
             for _ in range(entry.count):
                 front = cache.get_or_download(printing, client, face_index=0)
@@ -55,14 +60,24 @@ def build(
 def search(
     card_name: Annotated[str, typer.Argument(help="Card name to search")],
     limit: Annotated[int, typer.Option("--limit", "-n", help="Max results")] = 10,
+    preview: Annotated[bool, typer.Option("--preview", "-p", help="Show card thumbnails")] = False,
 ) -> None:
     """Search for card printings (oldest first)."""
     client = ScryfallClient()
-    printings = client.search_printings(card_name)
+    try:
+        printings = client.search_printings(card_name)
+    except CardNotFoundError:
+        typer.echo(f"No card found matching '{card_name}'", err=True)
+        raise typer.Exit(1)
 
     for i, p in enumerate(printings[:limit], 1):
         dfc = " (DFC)" if p.is_double_faced else ""
         typer.echo(f"  {i}. {p.set_code.upper()} ({p.release_date}) - {p.set_name}{dfc}")
+
+        if preview and p.faces and p.faces[0].image_uri_small:
+            response = client.client.get(p.faces[0].image_uri_small)
+            if response.status_code == 200:
+                display_image(response.content, width=15)
 
 
 @app.command()
