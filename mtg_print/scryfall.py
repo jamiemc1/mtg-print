@@ -7,6 +7,12 @@ import httpx
 
 from mtg_print.models import CardFace, CardPrinting
 
+
+class CardNotFoundError(Exception):
+    def __init__(self, card_name: str):
+        self.card_name = card_name
+        super().__init__(f"Card not found: {card_name}")
+
 SCRYFALL_API = "https://api.scryfall.com"
 REQUEST_DELAY = 0.1
 
@@ -23,9 +29,13 @@ class ScryfallClient:
             time.sleep(REQUEST_DELAY - elapsed)
         self._last_request = time.time()
 
-    def _get(self, endpoint: str, params: dict[str, str] | None = None) -> dict[str, Any]:
+    def _get(
+        self, endpoint: str, params: dict[str, str] | None = None, card_name: str | None = None
+    ) -> dict[str, Any]:
         self._rate_limit()
         response = self.client.get(f"{SCRYFALL_API}{endpoint}", params=params)
+        if response.status_code == 404 and card_name:
+            raise CardNotFoundError(card_name)
         response.raise_for_status()
         return response.json()
 
@@ -39,9 +49,17 @@ class ScryfallClient:
         ):
             for face in data["card_faces"]:
                 if "image_uris" in face:
-                    faces.append(CardFace(name=face["name"], image_uri_png=face["image_uris"]["png"]))
+                    faces.append(CardFace(
+                        name=face["name"],
+                        image_uri_png=face["image_uris"]["png"],
+                        image_uri_small=face["image_uris"].get("small"),
+                    ))
         elif "image_uris" in data:
-            faces.append(CardFace(name=data["name"], image_uri_png=data["image_uris"]["png"]))
+            faces.append(CardFace(
+                name=data["name"],
+                image_uri_png=data["image_uris"]["png"],
+                image_uri_small=data["image_uris"].get("small"),
+            ))
 
         return CardPrinting(
             name=data["name"],
@@ -58,12 +76,12 @@ class ScryfallClient:
         params = {"exact": name}
         if set_code:
             params["set"] = set_code.lower()
-        data = self._get("/cards/named", params)
+        data = self._get("/cards/named", params, card_name=name)
         return self._parse_printing(data)
 
     def search_printings(self, card_name: str) -> list[CardPrinting]:
         params = {"q": f'!"{card_name}"', "unique": "prints", "order": "released", "dir": "asc"}
-        data = self._get("/cards/search", params)
+        data = self._get("/cards/search", params, card_name=card_name)
         return [self._parse_printing(card) for card in data.get("data", [])]
 
     def download_image(self, url: str, dest: Path) -> Path:
