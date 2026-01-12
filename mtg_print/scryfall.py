@@ -13,6 +13,7 @@ class CardNotFoundError(Exception):
         self.card_name = card_name
         super().__init__(f"Card not found: {card_name}")
 
+
 SCRYFALL_API = "https://api.scryfall.com"
 REQUEST_DELAY = 0.1
 
@@ -49,17 +50,21 @@ class ScryfallClient:
         ):
             for face in data["card_faces"]:
                 if "image_uris" in face:
-                    faces.append(CardFace(
-                        name=face["name"],
-                        image_uri_png=face["image_uris"]["png"],
-                        image_uri_small=face["image_uris"].get("small"),
-                    ))
+                    faces.append(
+                        CardFace(
+                            name=face["name"],
+                            image_uri_png=face["image_uris"]["png"],
+                            image_uri_small=face["image_uris"].get("small"),
+                        )
+                    )
         elif "image_uris" in data:
-            faces.append(CardFace(
-                name=data["name"],
-                image_uri_png=data["image_uris"]["png"],
-                image_uri_small=data["image_uris"].get("small"),
-            ))
+            faces.append(
+                CardFace(
+                    name=data["name"],
+                    image_uri_png=data["image_uris"]["png"],
+                    image_uri_small=data["image_uris"].get("small"),
+                )
+            )
 
         return CardPrinting(
             name=data["name"],

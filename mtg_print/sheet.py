@@ -32,7 +32,6 @@ class SheetGenerator:
 
         card_width = CARD_WIDTH_MM * mm
         card_height = CARD_HEIGHT_MM * mm
-        margin = self.margin_mm * mm
 
         total_cards_width = self.cards_per_row * card_width
         total_cards_height = self.rows_per_page * card_height
