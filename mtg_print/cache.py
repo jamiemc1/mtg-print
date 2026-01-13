@@ -18,6 +18,7 @@ class ImageCache:
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.max_size_gb = max_size_gb
+        self._evict_if_needed()
 
     def get_path(self, printing: CardPrinting, face_index: int = 0) -> Path:
         suffix = "" if face_index == 0 else "_back"
@@ -59,8 +60,6 @@ class ImageCache:
             path.touch()
             return path
 
-        self._evict_if_needed()
-
         if face_index < len(printing.faces):
             url = printing.faces[face_index].image_uri_png
             return client.download_image(url, path)
@@ -68,7 +67,7 @@ class ImageCache:
         raise ValueError(f"No face at index {face_index} for {printing.name}")
 
     def clear(self) -> int:
-        count = sum(1 for _ in self.cache_dir.rglob("*.png"))
+        count = len(list(self.cache_dir.rglob("*.png")))
         if self.cache_dir.exists():
             shutil.rmtree(self.cache_dir)
             self.cache_dir.mkdir(parents=True, exist_ok=True)
