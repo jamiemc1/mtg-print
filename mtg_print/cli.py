@@ -6,6 +6,12 @@ import typer
 from mtg_print.cache import ImageCache
 from mtg_print.decklist import parse_decklist
 from mtg_print.models import CardPrinting
+from mtg_print.preferences import (
+    clear_preferences,
+    get_preference,
+    load_preferences,
+    save_preference,
+)
 from mtg_print.scryfall import CardNotFoundError, ScryfallClient
 from mtg_print.sheet import SheetGenerator
 from mtg_print.terminal import display_image, display_images_horizontal
@@ -47,15 +53,20 @@ def select_printing_interactive(
     typer.echo()
     choice = typer.prompt("Select printing", default="1", show_default=False)
 
+    selected: CardPrinting
     try:
         idx = int(choice) - 1
         if 0 <= idx < len(printings):
-            return printings[idx]
+            selected = printings[idx]
+        else:
+            typer.echo("Invalid selection, using default")
+            selected = printings[0]
     except ValueError:
-        pass
+        typer.echo("Invalid selection, using default")
+        selected = printings[0]
 
-    typer.echo("Invalid selection, using default")
-    return printings[0]
+    save_preference(card_name, selected.set_code)
+    return selected
 
 
 @app.command()
@@ -87,9 +98,13 @@ def build(
     if interactive:
         for idx, entry in enumerate(decklist.entries, 1):
             set_code = overrides.get(entry.name, entry.set_override)
+            pref = get_preference(entry.name)
             try:
                 if set_code:
                     printing = client.get_card_by_name(entry.name, set_code)
+                elif pref:
+                    printing = client.get_card_by_name(entry.name, pref)
+                    typer.echo(f"[{idx}/{total_cards}] {entry.name} -> {pref.upper()} (saved)")
                 else:
                     printings = client.search_printings(entry.name)
                     if not printings:
@@ -110,7 +125,9 @@ def build(
     else:
         with typer.progressbar(decklist.entries, label="Fetching cards") as entries:
             for entry in entries:
-                set_code = overrides.get(entry.name, entry.set_override)
+                set_code = (
+                    overrides.get(entry.name) or get_preference(entry.name) or entry.set_override
+                )
                 try:
                     printing = client.get_card_by_name(entry.name, set_code)
                 except CardNotFoundError:
@@ -172,6 +189,24 @@ def cache(
         typer.echo(f"Total size: {size_mb:.2f} MB")
     else:
         typer.echo("Use --clear or --stats")
+
+
+@app.command()
+def prefs(
+    clear: Annotated[bool, typer.Option("--clear", help="Clear all saved preferences")] = False,
+) -> None:
+    """Manage card art preferences."""
+    if clear:
+        count = clear_preferences()
+        typer.echo(f"Cleared {count} saved preferences")
+    else:
+        preferences = load_preferences()
+        if not preferences:
+            typer.echo("No saved preferences")
+        else:
+            typer.echo(f"Saved preferences ({len(preferences)} cards):\n")
+            for card_name, set_code in sorted(preferences.items()):
+                typer.echo(f"  {card_name} -> {set_code.upper()}")
 
 
 if __name__ == "__main__":
