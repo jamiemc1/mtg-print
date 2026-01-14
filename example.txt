@@ -1,0 +1,24 @@
+// Example Legacy Maverick decklist
+// Run: mtg-print build example.txt --interactive
+
+Creatures
+4 Noble Hierarch
+4 Thalia, Guardian of Thraben
+3 Knight of the Reliquary
+2 Endurance
+1 Collector Ouphe
+1 Scavenging Ooze
+
+Spells
+4 Swords to Plowshares
+4 Green Sun's Zenith
+3 Once Upon a Time
+
+Lands
+4 Windswept Heath
+3 Wooded Foothills
+2 Savannah
+1 Bayou
+1 Dryad Arbor
+1 Karakas
+1 Gaea's Cradle

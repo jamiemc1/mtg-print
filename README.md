@@ -14,6 +14,12 @@ Or run directly:
 uvx mtg-print --help
 ```
 
+## Quick start
+
+```bash
+mtg-print build example.txt --interactive
+```
+
 ## Usage
 
 ### Build a PDF from a decklist

@@ -2,7 +2,21 @@
 name = "mtg-print"
 version = "0.1.0"
 description = "CLI tool for printing MTG proxy sheets from decklists"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Jamie McMillan" }]
+keywords = ["mtg", "magic", "proxy", "printing", "scryfall", "decklist"]
 requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Games/Entertainment",
+]
 dependencies = [
     "typer>=0.9",
     "httpx>=0.27",
@@ -13,6 +27,10 @@ dependencies = [
 
 [project.scripts]
 mtg-print = "mtg_print.cli:app"
+
+[project.urls]
+Repository = "https://github.com/jamiemc1/mtg-print"
+Issues = "https://github.com/jamiemc1/mtg-print/issues"
 
 [build-system]
 requires = ["hatchling"]
