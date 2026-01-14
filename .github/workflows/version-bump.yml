@@ -1,0 +1,57 @@
+name: Version Bump
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  bump:
+    name: Bump Version
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine bump type from branch name
+        id: bump-type
+        run: |
+          BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+          if [[ "$BRANCH_NAME" == patch/* ]]; then
+            echo "type=patch" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH_NAME" == minor/* ]]; then
+            echo "type=minor" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH_NAME" == major/* ]]; then
+            echo "type=major" >> $GITHUB_OUTPUT
+          else
+            echo "Branch '$BRANCH_NAME' does not match patch/*/minor/*/major/*"
+            echo "type=none" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install hatch
+        if: steps.bump-type.outputs.type != 'none'
+        run: pipx install hatch
+
+      - name: Bump version
+        if: steps.bump-type.outputs.type != 'none'
+        id: version
+        run: |
+          OLD_VERSION=$(hatch version)
+          hatch version ${{ steps.bump-type.outputs.type }}
+          NEW_VERSION=$(hatch version)
+          echo "old=$OLD_VERSION" >> $GITHUB_OUTPUT
+          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Bumped version: $OLD_VERSION -> $NEW_VERSION"
+
+      - name: Commit and push
+        if: steps.bump-type.outputs.type != 'none'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "Bump version to ${{ steps.version.outputs.new }}"
+          git push
