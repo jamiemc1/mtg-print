@@ -11,14 +11,6 @@ dependencies = [
     "tomli-w>=1.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0",
-    "pytest-httpx>=0.30",
-    "mypy>=1.0",
-    "ruff>=0.1",
-]
-
 [project.scripts]
 mtg-print = "mtg_print.cli:app"
 
@@ -40,4 +32,8 @@ strict = true
 [dependency-groups]
 dev = [
     "pre-commit>=4.5.1",
+    "pytest>=8.0",
+    "pytest-httpx>=0.30",
+    "ruff>=0.1",
+    "ty>=0.0.1a0",
 ]
