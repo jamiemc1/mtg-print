@@ -2,6 +2,8 @@
 
 CLI tool for printing Magic: The Gathering proxy sheets. Parses decklists, fetches card images from Scryfall, and generates printable PDFs.
 
+![Demo](docs/demo.gif)
+
 ## Installation
 
 ```bash
