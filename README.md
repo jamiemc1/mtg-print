@@ -17,7 +17,7 @@ uvx mtg-print --help
 ## Quick start
 
 ```bash
-mtg-print build example.txt --interactive
+mtg-print build docs/example.txt --interactive
 ```
 
 ## Usage
@@ -83,3 +83,7 @@ uv sync --dev
 uv run pytest
 uv run pre-commit run --all-files
 ```
+
+---
+
+Card images © Wizards of the Coast
