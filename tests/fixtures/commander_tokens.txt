@@ -1,0 +1,11 @@
+// Commander deck with token/emblem producing cards
+1 Avenger of Zendikar
+1 Teferi, Hero of Dominaria
+1 Elspeth, Sun's Champion
+1 Smothering Tithe
+1 Dockside Extortionist
+1 Bitterblossom
+1 Grave Titan
+1 Sun Titan
+1 Craterhoof Behemoth
+1 Hapatra, Vizier of Poisons

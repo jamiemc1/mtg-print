@@ -1,0 +1,7 @@
+// Modern deck with token/emblem producing cards
+4 Ragavan, Nimble Pilferer
+4 Fable of the Mirror-Breaker
+2 Ral, Monsoon Mage
+1 Wrenn and Six
+4 Young Pyromancer
+2 Bitter Reunion
