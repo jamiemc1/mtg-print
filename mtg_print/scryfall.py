@@ -96,7 +96,9 @@ class ScryfallClient:
             "dir": "asc",
         }
         data = self._get("/cards/search", params, card_name=card_name)
-        return [self._parse_printing(card) for card in data.get("data", [])]
+        printings = [self._parse_printing(card) for card in data.get("data", [])]
+        # Filter out art series and other layouts without printable images
+        return [p for p in printings if p.faces]
 
     def download_image(self, url: str, dest: Path) -> Path:
         dest.parent.mkdir(parents=True, exist_ok=True)

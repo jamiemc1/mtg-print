@@ -168,6 +168,46 @@ class TestScryfallClientSearchPrintings:
         with pytest.raises(CardNotFoundError):
             client.search_printings("Fake Card")
 
+    def test_filters_out_art_series_without_images(self, httpx_mock: HTTPXMock) -> None:
+        response_with_art_series = {
+            "data": [
+                {
+                    "name": "Wrenn and Six // Wrenn and Six",
+                    "set": "amh1",
+                    "set_name": "Modern Horizons Art Series",
+                    "collector_number": "6",
+                    "released_at": "2019-06-05",
+                    "scryfall_uri": "https://scryfall.com/card/amh1/6",
+                    "layout": "art_series",
+                    # No image_uris - art series cards don't have them
+                },
+                {
+                    "name": "Wrenn and Six",
+                    "set": "mh1",
+                    "set_name": "Modern Horizons",
+                    "collector_number": "217",
+                    "released_at": "2019-06-14",
+                    "scryfall_uri": "https://scryfall.com/card/mh1/217",
+                    "layout": "normal",
+                    "image_uris": {
+                        "png": "https://cards.scryfall.io/png/mh1/217.png",
+                        "small": "https://cards.scryfall.io/small/mh1/217.jpg",
+                    },
+                },
+            ]
+        }
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/search?q=%21%22Wrenn+and+Six%22+include%3Aextras&unique=prints&order=released&dir=asc",
+            json=response_with_art_series,
+        )
+
+        client = ScryfallClient()
+        printings = client.search_printings("Wrenn and Six")
+
+        assert len(printings) == 1
+        assert printings[0].set_code == "mh1"
+        assert printings[0].layout == "normal"
+
 
 class TestScryfallClientDownloadImage:
     def test_downloads_and_saves_image(self, httpx_mock: HTTPXMock, tmp_path) -> None:
