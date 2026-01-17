@@ -212,3 +212,5 @@ __marimo__/
 
 # macOS
 .DS_STORE
+
+*.pdf
