@@ -75,6 +75,7 @@ class ScryfallClient:
             scryfall_uri=data["scryfall_uri"],
             layout=data["layout"],
             faces=faces,
+            legalities=data.get("legalities", {}),
         )
 
     def get_card_by_name(self, name: str, set_code: str | None = None) -> CardPrinting:

@@ -72,6 +72,36 @@ class TestCardPrinting:
         )
         assert printing.back_image is None
 
+    def test_legalities_default_empty(self) -> None:
+        printing = CardPrinting(
+            name="Test",
+            set_code="tst",
+            set_name="Test Set",
+            collector_number="1",
+            release_date=date(2020, 1, 1),
+            scryfall_uri="https://scryfall.com/card/tst/1",
+            layout="normal",
+            faces=[],
+        )
+        assert printing.legalities == {}
+
+    def test_legalities_stores_format_status(self) -> None:
+        legalities = {"modern": "legal", "legacy": "banned", "standard": "not_legal"}
+        printing = CardPrinting(
+            name="Test",
+            set_code="tst",
+            set_name="Test Set",
+            collector_number="1",
+            release_date=date(2020, 1, 1),
+            scryfall_uri="https://scryfall.com/card/tst/1",
+            layout="normal",
+            faces=[],
+            legalities=legalities,
+        )
+        assert printing.legalities["modern"] == "legal"
+        assert printing.legalities["legacy"] == "banned"
+        assert printing.legalities["standard"] == "not_legal"
+
 
 class TestDecklist:
     def test_total_cards_empty(self) -> None:

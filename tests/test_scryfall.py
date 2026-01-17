@@ -20,6 +20,29 @@ ELVISH_RECLAIMER_RESPONSE = {
     },
 }
 
+OKO_RESPONSE = {
+    "name": "Oko, Thief of Crowns",
+    "set": "eld",
+    "set_name": "Throne of Eldraine",
+    "collector_number": "197",
+    "released_at": "2019-10-04",
+    "scryfall_uri": "https://scryfall.com/card/eld/197",
+    "layout": "normal",
+    "image_uris": {
+        "png": "https://cards.scryfall.io/png/eld/197.png",
+        "small": "https://cards.scryfall.io/small/eld/197.jpg",
+    },
+    "legalities": {
+        "standard": "not_legal",
+        "pioneer": "banned",
+        "modern": "banned",
+        "legacy": "banned",
+        "vintage": "legal",
+        "pauper": "not_legal",
+        "commander": "legal",
+    },
+}
+
 DELVER_DFC_RESPONSE = {
     "name": "Delver of Secrets // Insectile Aberration",
     "set": "isd",
@@ -94,6 +117,21 @@ class TestScryfallClientParsePrinting:
 
         assert printing.is_double_faced is False
         assert printing.back_image is None
+
+    def test_parses_legalities(self) -> None:
+        client = ScryfallClient()
+        printing = client._parse_printing(OKO_RESPONSE)
+
+        assert printing.legalities["modern"] == "banned"
+        assert printing.legalities["legacy"] == "banned"
+        assert printing.legalities["vintage"] == "legal"
+        assert printing.legalities["commander"] == "legal"
+
+    def test_legalities_empty_when_missing(self) -> None:
+        client = ScryfallClient()
+        printing = client._parse_printing(ELVISH_RECLAIMER_RESPONSE)
+
+        assert printing.legalities == {}
 
 
 class TestScryfallClientGetCardByName:

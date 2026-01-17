@@ -76,6 +76,15 @@ mtg-print cache --stats   # Show cache size
 mtg-print cache --clear   # Clear cached images
 ```
 
+### Check format legality
+
+```bash
+mtg-print check deck.txt --format modern
+mtg-print check deck.txt --format legacy
+```
+
+Validates your decklist against format banlists. Supported formats: standard, pioneer, modern, legacy, pauper, commander.
+
 ## Supported decklist formats
 
 - Moxfield / MTG Arena: `4 Elvish Reclaimer (MH2) 166`
