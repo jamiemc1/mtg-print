@@ -3,6 +3,7 @@ from typing import Annotated
 
 import typer
 
+from mtg_print.__version__ import __version__
 from mtg_print.cache import ImageCache
 from mtg_print.decklist import parse_decklist
 from mtg_print.models import CardPrinting
@@ -16,7 +17,22 @@ from mtg_print.scryfall import CardNotFoundError, ScryfallClient
 from mtg_print.sheet import SheetGenerator
 from mtg_print.terminal import display_image, display_images_horizontal
 
-app = typer.Typer(help="MTG proxy printing tool", no_args_is_help=True)
+app = typer.Typer(no_args_is_help=True)
+
+
+def version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"mtg-print {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: Annotated[
+        bool, typer.Option("--version", "-v", callback=version_callback, is_eager=True)
+    ] = False,
+) -> None:
+    """MTG proxy printing tool"""
 
 
 def select_printing_interactive(
