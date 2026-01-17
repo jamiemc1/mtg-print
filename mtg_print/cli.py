@@ -95,8 +95,8 @@ def build(
     interactive: Annotated[
         bool, typer.Option("--interactive", "-i", help="Interactively select card art")
     ] = False,
-    tokens: Annotated[
-        bool, typer.Option("--tokens", "-t", help="Include tokens and emblems created by cards")
+    extras: Annotated[
+        bool, typer.Option("--extras", "-e", help="Include tokens, emblems, and related cards")
     ] = False,
 ) -> None:
     """Build printable PDF from decklist."""
@@ -143,7 +143,7 @@ def build(
                     back = cache.get_or_download(printing, client, face_index=1)
                     images.append(back)
 
-            if tokens:
+            if extras:
                 for part in client.get_related_parts(entry.name, set_code):
                     if part.name not in related_parts:
                         related_parts[part.name] = part
@@ -166,7 +166,7 @@ def build(
                         back = cache.get_or_download(printing, client, face_index=1)
                         images.append(back)
 
-                if tokens:
+                if extras:
                     for part in client.get_related_parts(entry.name, set_code):
                         if part.name not in related_parts:
                             related_parts[part.name] = part
