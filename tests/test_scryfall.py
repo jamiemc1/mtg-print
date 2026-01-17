@@ -120,7 +120,7 @@ class TestScryfallClientGetCardByName:
 
     def test_without_set_code_uses_search(self, httpx_mock: HTTPXMock) -> None:
         httpx_mock.add_response(
-            url="https://api.scryfall.com/cards/search?q=%21%22Elvish+Reclaimer%22&unique=prints&order=released&dir=asc",
+            url="https://api.scryfall.com/cards/search?q=%21%22Elvish+Reclaimer%22+include%3Aextras&unique=prints&order=released&dir=asc",
             json=SEARCH_RESPONSE,
         )
 
@@ -147,7 +147,7 @@ class TestScryfallClientGetCardByName:
 class TestScryfallClientSearchPrintings:
     def test_returns_all_printings_oldest_first(self, httpx_mock: HTTPXMock) -> None:
         httpx_mock.add_response(
-            url="https://api.scryfall.com/cards/search?q=%21%22Elvish+Reclaimer%22&unique=prints&order=released&dir=asc",
+            url="https://api.scryfall.com/cards/search?q=%21%22Elvish+Reclaimer%22+include%3Aextras&unique=prints&order=released&dir=asc",
             json=SEARCH_RESPONSE,
         )
 
@@ -160,7 +160,7 @@ class TestScryfallClientSearchPrintings:
 
     def test_card_not_found_raises_error(self, httpx_mock: HTTPXMock) -> None:
         httpx_mock.add_response(
-            url="https://api.scryfall.com/cards/search?q=%21%22Fake+Card%22&unique=prints&order=released&dir=asc",
+            url="https://api.scryfall.com/cards/search?q=%21%22Fake+Card%22+include%3Aextras&unique=prints&order=released&dir=asc",
             status_code=404,
         )
 
@@ -536,3 +536,62 @@ class TestScryfallClientGetRelatedParts:
         assert "Boo" in part_names
         assert "A-Minsc & Boo, Timeless Heroes" not in part_names
         assert len(parts) == 1
+
+    def test_excludes_normal_cards_from_related_parts(self, httpx_mock: HTTPXMock) -> None:
+        elk_response = {
+            "name": "Elk",
+            "set": "tecl",
+            "set_name": "Throne of Eldraine Tokens",
+            "collector_number": "1",
+            "released_at": "2019-10-04",
+            "scryfall_uri": "https://scryfall.com/card/tecl/1",
+            "layout": "token",
+            "image_uris": {
+                "png": "https://cards.scryfall.io/png/tecl/1.png",
+                "small": "https://cards.scryfall.io/small/tecl/1.jpg",
+            },
+            "all_parts": [
+                {
+                    "object": "related_card",
+                    "id": "elk123",
+                    "component": "token",
+                    "name": "Elk",
+                    "uri": "https://api.scryfall.com/cards/elk123",
+                },
+                {
+                    "object": "related_card",
+                    "id": "oko123",
+                    "component": "combo_piece",
+                    "name": "Oko, Thief of Crowns",
+                    "uri": "https://api.scryfall.com/cards/oko123",
+                },
+            ],
+        }
+        oko_response = {
+            "name": "Oko, Thief of Crowns",
+            "set": "eld",
+            "set_name": "Throne of Eldraine",
+            "collector_number": "197",
+            "released_at": "2019-10-04",
+            "scryfall_uri": "https://scryfall.com/card/eld/197",
+            "layout": "normal",
+            "image_uris": {
+                "png": "https://cards.scryfall.io/png/eld/197.png",
+                "small": "https://cards.scryfall.io/small/eld/197.jpg",
+            },
+        }
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Elk",
+            json=elk_response,
+        )
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/oko123",
+            json=oko_response,
+        )
+
+        client = ScryfallClient()
+        parts = client.get_related_parts("Elk")
+
+        part_names = [p.name for p in parts]
+        assert "Oko, Thief of Crowns" not in part_names
+        assert len(parts) == 0

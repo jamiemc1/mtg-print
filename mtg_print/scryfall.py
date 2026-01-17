@@ -89,7 +89,12 @@ class ScryfallClient:
         return printings[0]
 
     def search_printings(self, card_name: str) -> list[CardPrinting]:
-        params = {"q": f'!"{card_name}"', "unique": "prints", "order": "released", "dir": "asc"}
+        params = {
+            "q": f'!"{card_name}" include:extras',
+            "unique": "prints",
+            "order": "released",
+            "dir": "asc",
+        }
         data = self._get("/cards/search", params, card_name=card_name)
         return [self._parse_printing(card) for card in data.get("data", [])]
 
@@ -101,6 +106,8 @@ class ScryfallClient:
         return dest
 
     def get_related_parts(self, name: str, set_code: str | None = None) -> list[CardPrinting]:
+        extra_layouts = {"token", "emblem", "meld"}
+
         if set_code:
             params = {"exact": name, "set": set_code.lower()}
         else:
@@ -116,6 +123,8 @@ class ScryfallClient:
                 continue
             part_data = self._get(part["uri"].replace(SCRYFALL_API, ""))
             if part_data.get("digital", False):
+                continue
+            if part_data.get("layout") not in extra_layouts:
                 continue
             parts.append(self._parse_printing(part_data))
         return parts
