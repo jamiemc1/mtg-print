@@ -65,6 +65,12 @@ jobs:
           git commit -m "Bump version to ${{ steps.version.outputs.new }}"
           git push
 
+      - name: Create and push tag
+        if: steps.bump-type.outputs.type != 'none'
+        run: |
+          git tag "v${{ steps.version.outputs.new }}"
+          git push origin "v${{ steps.version.outputs.new }}"
+
       - name: Build package
         if: steps.bump-type.outputs.type != 'none'
         run: uv build
@@ -74,3 +80,12 @@ jobs:
         run: uv publish
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Create GitHub release
+        if: steps.bump-type.outputs.type != 'none'
+        run: |
+          gh release create "v${{ steps.version.outputs.new }}" \
+            --title "v${{ steps.version.outputs.new }}" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
