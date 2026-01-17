@@ -50,6 +50,12 @@ select = ["E", "F", "I", "UP"]
 python_version = "3.11"
 strict = true
 
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (hit real APIs, deselect with '-m \"not slow\"')",
+]
+addopts = "-m 'not slow'"
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.5.1",
