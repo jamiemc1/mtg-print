@@ -232,7 +232,6 @@ wheels = [
 
 [[package]]
 name = "mtg-print"
-version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
