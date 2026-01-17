@@ -1,13 +1,16 @@
-name: Version Bump
+name: Release
 
 on:
   pull_request:
     types: [closed]
     branches: [main]
 
+env:
+  PYTHON_VERSION: "3.12"
+
 jobs:
-  bump:
-    name: Bump Version
+  release:
+    name: Release
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
@@ -32,17 +35,23 @@ jobs:
             echo "type=none" >> $GITHUB_OUTPUT
           fi
 
-      - name: Install hatch
+      - name: Install uv
         if: steps.bump-type.outputs.type != 'none'
-        run: pipx install hatch
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        if: steps.bump-type.outputs.type != 'none'
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Bump version
         if: steps.bump-type.outputs.type != 'none'
         id: version
         run: |
-          OLD_VERSION=$(hatch version)
-          hatch version ${{ steps.bump-type.outputs.type }}
-          NEW_VERSION=$(hatch version)
+          OLD_VERSION=$(uvx hatch version)
+          uvx hatch version ${{ steps.bump-type.outputs.type }}
+          NEW_VERSION=$(uvx hatch version)
           echo "old=$OLD_VERSION" >> $GITHUB_OUTPUT
           echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "Bumped version: $OLD_VERSION -> $NEW_VERSION"
@@ -52,6 +61,16 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml
+          git add mtg_print/__version__.py
           git commit -m "Bump version to ${{ steps.version.outputs.new }}"
           git push
+
+      - name: Build package
+        if: steps.bump-type.outputs.type != 'none'
+        run: uv build
+
+      - name: Publish to PyPI
+        if: steps.bump-type.outputs.type != 'none'
+        run: uv publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
