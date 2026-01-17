@@ -115,5 +115,7 @@ class ScryfallClient:
             if "Checklist" in part_name:
                 continue
             part_data = self._get(part["uri"].replace(SCRYFALL_API, ""))
+            if part_data.get("digital", False):
+                continue
             parts.append(self._parse_printing(part_data))
         return parts
