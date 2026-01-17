@@ -352,6 +352,73 @@ NO_PARTS_RESPONSE = {
     **ELVISH_RECLAIMER_RESPONSE,
 }
 
+MINSC_RESPONSE = {
+    "name": "Minsc & Boo, Timeless Heroes",
+    "set": "clb",
+    "set_name": "Commander Legends: Battle for Baldur's Gate",
+    "collector_number": "285",
+    "released_at": "2022-06-10",
+    "scryfall_uri": "https://scryfall.com/card/clb/285",
+    "layout": "normal",
+    "image_uris": {
+        "png": "https://cards.scryfall.io/png/clb/285.png",
+        "small": "https://cards.scryfall.io/small/clb/285.jpg",
+    },
+    "all_parts": [
+        {
+            "object": "related_card",
+            "id": "minsc123",
+            "component": "combo_piece",
+            "name": "Minsc & Boo, Timeless Heroes",
+            "uri": "https://api.scryfall.com/cards/minsc123",
+        },
+        {
+            "object": "related_card",
+            "id": "boo123",
+            "component": "token",
+            "name": "Boo",
+            "uri": "https://api.scryfall.com/cards/boo123",
+        },
+        {
+            "object": "related_card",
+            "id": "aminsc123",
+            "component": "combo_piece",
+            "name": "A-Minsc & Boo, Timeless Heroes",
+            "uri": "https://api.scryfall.com/cards/aminsc123",
+        },
+    ],
+}
+
+BOO_TOKEN_RESPONSE = {
+    "name": "Boo",
+    "set": "tclb",
+    "set_name": "Commander Legends: Battle for Baldur's Gate Tokens",
+    "collector_number": "1",
+    "released_at": "2022-06-10",
+    "scryfall_uri": "https://scryfall.com/card/tclb/1",
+    "layout": "token",
+    "digital": False,
+    "image_uris": {
+        "png": "https://cards.scryfall.io/png/tclb/1.png",
+        "small": "https://cards.scryfall.io/small/tclb/1.jpg",
+    },
+}
+
+ALCHEMY_MINSC_RESPONSE = {
+    "name": "A-Minsc & Boo, Timeless Heroes",
+    "set": "hbg",
+    "set_name": "Alchemy Horizons: Baldur's Gate",
+    "collector_number": "285",
+    "released_at": "2022-07-07",
+    "scryfall_uri": "https://scryfall.com/card/hbg/285",
+    "layout": "normal",
+    "digital": True,
+    "image_uris": {
+        "png": "https://cards.scryfall.io/png/hbg/285.png",
+        "small": "https://cards.scryfall.io/small/hbg/285.jpg",
+    },
+}
+
 
 class TestScryfallClientGetRelatedParts:
     def test_returns_tokens_for_card(self, httpx_mock: HTTPXMock) -> None:
@@ -447,3 +514,25 @@ class TestScryfallClientGetRelatedParts:
 
         assert len(parts) == 1
         assert parts[0].name == "Plant"
+
+    def test_excludes_digital_only_cards(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Minsc+%26+Boo%2C+Timeless+Heroes",
+            json=MINSC_RESPONSE,
+        )
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/boo123",
+            json=BOO_TOKEN_RESPONSE,
+        )
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/aminsc123",
+            json=ALCHEMY_MINSC_RESPONSE,
+        )
+
+        client = ScryfallClient()
+        parts = client.get_related_parts("Minsc & Boo, Timeless Heroes")
+
+        part_names = [p.name for p in parts]
+        assert "Boo" in part_names
+        assert "A-Minsc & Boo, Timeless Heroes" not in part_names
+        assert len(parts) == 1
