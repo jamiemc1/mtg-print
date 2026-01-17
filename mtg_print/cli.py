@@ -249,5 +249,75 @@ def prefs(
                 typer.echo(f"  {card_name} -> {set_code.upper()}")
 
 
+SUPPORTED_FORMATS = [
+    "standard",
+    "pioneer",
+    "modern",
+    "legacy",
+    "pauper",
+    "commander",
+]
+
+
+@app.command()
+def check(
+    decklist_path: Annotated[Path, typer.Argument(help="Path to decklist file")],
+    format_name: Annotated[
+        str, typer.Option("--format", "-f", help="Format to check against")
+    ] = "modern",
+) -> None:
+    """Check decklist legality for a format."""
+    if format_name.lower() not in SUPPORTED_FORMATS:
+        typer.echo(
+            f"Unsupported format: {format_name}. Supported: {', '.join(SUPPORTED_FORMATS)}",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    format_key = format_name.lower()
+    decklist = parse_decklist(decklist_path)
+    client = ScryfallClient()
+
+    banned: list[str] = []
+    not_legal: list[str] = []
+
+    skipped_layouts = {"token", "emblem"}
+
+    with typer.progressbar(decklist.entries, label="Checking cards") as entries:
+        for entry in entries:
+            try:
+                printing = client.get_card_by_name(entry.name)
+                if printing.layout in skipped_layouts:
+                    continue
+                legality = printing.legalities.get(format_key, "not_legal")
+                if legality == "banned":
+                    banned.append(entry.name)
+                elif legality == "not_legal":
+                    not_legal.append(entry.name)
+            except CardNotFoundError:
+                typer.echo(f"\nCard not found: '{entry.name}'", err=True)
+                raise typer.Exit(1)
+
+    total_cards = len(decklist.entries)
+    issues = len(banned) + len(not_legal)
+
+    if issues == 0:
+        typer.echo(f"\n✓ All {total_cards} cards are legal in {format_name.title()}")
+    else:
+        typer.echo(f"\n{format_name.title()} legality issues:\n")
+        if banned:
+            typer.echo(f"  BANNED ({len(banned)}):")
+            for name in sorted(banned):
+                typer.echo(f"    - {name}")
+            typer.echo()
+        if not_legal:
+            typer.echo(f"  NOT LEGAL ({len(not_legal)}):")
+            for name in sorted(not_legal):
+                typer.echo(f"    - {name}")
+            typer.echo()
+        typer.echo(f"{total_cards} cards checked, {issues} issues found")
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()

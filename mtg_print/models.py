@@ -19,6 +19,7 @@ class CardPrinting:
     scryfall_uri: str
     layout: str
     faces: list[CardFace] = field(default_factory=list)
+    legalities: dict[str, str] = field(default_factory=dict)
 
     @property
     def is_double_faced(self) -> bool:
