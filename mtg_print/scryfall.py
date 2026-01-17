@@ -99,3 +99,21 @@ class ScryfallClient:
         response.raise_for_status()
         dest.write_bytes(response.content)
         return dest
+
+    def get_related_parts(self, name: str, set_code: str | None = None) -> list[CardPrinting]:
+        if set_code:
+            params = {"exact": name, "set": set_code.lower()}
+        else:
+            params = {"exact": name}
+        data = self._get("/cards/named", params, card_name=name)
+
+        parts: list[CardPrinting] = []
+        for part in data.get("all_parts", []):
+            part_name = part.get("name", "")
+            if part_name == name:
+                continue
+            if "Checklist" in part_name:
+                continue
+            part_data = self._get(part["uri"].replace(SCRYFALL_API, ""))
+            parts.append(self._parse_printing(part_data))
+        return parts

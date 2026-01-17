@@ -95,6 +95,9 @@ def build(
     interactive: Annotated[
         bool, typer.Option("--interactive", "-i", help="Interactively select card art")
     ] = False,
+    tokens: Annotated[
+        bool, typer.Option("--tokens", "-t", help="Include tokens and emblems created by cards")
+    ] = False,
 ) -> None:
     """Build printable PDF from decklist."""
     overrides = {}
@@ -109,6 +112,7 @@ def build(
     client = ScryfallClient()
     cache = ImageCache()
     images: list[Path] = []
+    related_parts: dict[str, CardPrinting] = {}
     total_cards = len(decklist.entries)
 
     if interactive:
@@ -138,6 +142,11 @@ def build(
                 if printing.is_double_faced:
                     back = cache.get_or_download(printing, client, face_index=1)
                     images.append(back)
+
+            if tokens:
+                for part in client.get_related_parts(entry.name, set_code):
+                    if part.name not in related_parts:
+                        related_parts[part.name] = part
     else:
         with typer.progressbar(decklist.entries, label="Fetching cards") as entries:
             for entry in entries:
@@ -156,6 +165,20 @@ def build(
                     if printing.is_double_faced:
                         back = cache.get_or_download(printing, client, face_index=1)
                         images.append(back)
+
+                if tokens:
+                    for part in client.get_related_parts(entry.name, set_code):
+                        if part.name not in related_parts:
+                            related_parts[part.name] = part
+
+    if related_parts:
+        typer.echo(f"Found {len(related_parts)} related tokens/emblems")
+        for part in related_parts.values():
+            front = cache.get_or_download(part, client, face_index=0)
+            images.append(front)
+            if part.is_double_faced:
+                back = cache.get_or_download(part, client, face_index=1)
+                images.append(back)
 
     output_path = output or decklist_path.with_suffix(".pdf")
     generator = SheetGenerator()

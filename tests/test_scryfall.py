@@ -207,3 +207,243 @@ class TestScryfallClientCustomHttpClient:
         printing = client.get_card_by_name("Elvish Reclaimer", set_code="mh1")
 
         assert printing.name == "Elvish Reclaimer"
+
+
+AVENGER_RESPONSE = {
+    "name": "Avenger of Zendikar",
+    "set": "c18",
+    "set_name": "Commander 2018",
+    "collector_number": "129",
+    "released_at": "2018-08-10",
+    "scryfall_uri": "https://scryfall.com/card/c18/129",
+    "layout": "normal",
+    "image_uris": {
+        "png": "https://cards.scryfall.io/png/c18/129.png",
+        "small": "https://cards.scryfall.io/small/c18/129.jpg",
+    },
+    "all_parts": [
+        {
+            "object": "related_card",
+            "id": "abc123",
+            "component": "combo_piece",
+            "name": "Avenger of Zendikar",
+            "uri": "https://api.scryfall.com/cards/abc123",
+        },
+        {
+            "object": "related_card",
+            "id": "plant123",
+            "component": "token",
+            "name": "Plant",
+            "uri": "https://api.scryfall.com/cards/plant123",
+        },
+    ],
+}
+
+PLANT_TOKEN_RESPONSE = {
+    "name": "Plant",
+    "set": "tc18",
+    "set_name": "Commander 2018 Tokens",
+    "collector_number": "1",
+    "released_at": "2018-08-10",
+    "scryfall_uri": "https://scryfall.com/card/tc18/1",
+    "layout": "token",
+    "image_uris": {
+        "png": "https://cards.scryfall.io/png/tc18/1.png",
+        "small": "https://cards.scryfall.io/small/tc18/1.jpg",
+    },
+}
+
+TEFERI_RESPONSE = {
+    "name": "Teferi, Hero of Dominaria",
+    "set": "dom",
+    "set_name": "Dominaria",
+    "collector_number": "207",
+    "released_at": "2018-04-27",
+    "scryfall_uri": "https://scryfall.com/card/dom/207",
+    "layout": "normal",
+    "image_uris": {
+        "png": "https://cards.scryfall.io/png/dom/207.png",
+        "small": "https://cards.scryfall.io/small/dom/207.jpg",
+    },
+    "all_parts": [
+        {
+            "object": "related_card",
+            "id": "emblem123",
+            "component": "combo_piece",
+            "name": "Teferi, Hero of Dominaria Emblem",
+            "uri": "https://api.scryfall.com/cards/emblem123",
+        },
+        {
+            "object": "related_card",
+            "id": "teferi123",
+            "component": "combo_piece",
+            "name": "Teferi, Hero of Dominaria",
+            "uri": "https://api.scryfall.com/cards/teferi123",
+        },
+    ],
+}
+
+TEFERI_EMBLEM_RESPONSE = {
+    "name": "Teferi, Hero of Dominaria Emblem",
+    "set": "tdom",
+    "set_name": "Dominaria Tokens",
+    "collector_number": "1",
+    "released_at": "2018-04-27",
+    "scryfall_uri": "https://scryfall.com/card/tdom/1",
+    "layout": "emblem",
+    "image_uris": {
+        "png": "https://cards.scryfall.io/png/tdom/1.png",
+        "small": "https://cards.scryfall.io/small/tdom/1.jpg",
+    },
+}
+
+GISELA_RESPONSE = {
+    "name": "Gisela, the Broken Blade",
+    "set": "emn",
+    "set_name": "Eldritch Moon",
+    "collector_number": "28",
+    "released_at": "2016-07-22",
+    "scryfall_uri": "https://scryfall.com/card/emn/28",
+    "layout": "meld",
+    "image_uris": {
+        "png": "https://cards.scryfall.io/png/emn/28.png",
+        "small": "https://cards.scryfall.io/small/emn/28.jpg",
+    },
+    "all_parts": [
+        {
+            "object": "related_card",
+            "id": "checklist123",
+            "component": "token",
+            "name": "Eldritch Moon Checklist",
+            "uri": "https://api.scryfall.com/cards/checklist123",
+        },
+        {
+            "object": "related_card",
+            "id": "brisela123",
+            "component": "meld_result",
+            "name": "Brisela, Voice of Nightmares",
+            "uri": "https://api.scryfall.com/cards/brisela123",
+        },
+        {
+            "object": "related_card",
+            "id": "gisela123",
+            "component": "meld_part",
+            "name": "Gisela, the Broken Blade",
+            "uri": "https://api.scryfall.com/cards/gisela123",
+        },
+    ],
+}
+
+BRISELA_RESPONSE = {
+    "name": "Brisela, Voice of Nightmares",
+    "set": "emn",
+    "set_name": "Eldritch Moon",
+    "collector_number": "15b",
+    "released_at": "2016-07-22",
+    "scryfall_uri": "https://scryfall.com/card/emn/15b",
+    "layout": "meld",
+    "image_uris": {
+        "png": "https://cards.scryfall.io/png/emn/15b.png",
+        "small": "https://cards.scryfall.io/small/emn/15b.jpg",
+    },
+}
+
+NO_PARTS_RESPONSE = {
+    **ELVISH_RECLAIMER_RESPONSE,
+}
+
+
+class TestScryfallClientGetRelatedParts:
+    def test_returns_tokens_for_card(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Avenger+of+Zendikar",
+            json=AVENGER_RESPONSE,
+        )
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/plant123",
+            json=PLANT_TOKEN_RESPONSE,
+        )
+
+        client = ScryfallClient()
+        parts = client.get_related_parts("Avenger of Zendikar")
+
+        assert len(parts) == 1
+        assert parts[0].name == "Plant"
+        assert parts[0].layout == "token"
+
+    def test_returns_emblems_for_planeswalker(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Teferi%2C+Hero+of+Dominaria",
+            json=TEFERI_RESPONSE,
+        )
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/emblem123",
+            json=TEFERI_EMBLEM_RESPONSE,
+        )
+
+        client = ScryfallClient()
+        parts = client.get_related_parts("Teferi, Hero of Dominaria")
+
+        assert len(parts) == 1
+        assert parts[0].name == "Teferi, Hero of Dominaria Emblem"
+        assert parts[0].layout == "emblem"
+
+    def test_excludes_self_reference(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Teferi%2C+Hero+of+Dominaria",
+            json=TEFERI_RESPONSE,
+        )
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/emblem123",
+            json=TEFERI_EMBLEM_RESPONSE,
+        )
+
+        client = ScryfallClient()
+        parts = client.get_related_parts("Teferi, Hero of Dominaria")
+
+        part_names = [p.name for p in parts]
+        assert "Teferi, Hero of Dominaria" not in part_names
+
+    def test_excludes_checklist_cards(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Gisela%2C+the+Broken+Blade",
+            json=GISELA_RESPONSE,
+        )
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/brisela123",
+            json=BRISELA_RESPONSE,
+        )
+
+        client = ScryfallClient()
+        parts = client.get_related_parts("Gisela, the Broken Blade")
+
+        part_names = [p.name for p in parts]
+        assert "Eldritch Moon Checklist" not in part_names
+        assert "Brisela, Voice of Nightmares" in part_names
+
+    def test_returns_empty_for_card_without_parts(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Elvish+Reclaimer",
+            json=NO_PARTS_RESPONSE,
+        )
+
+        client = ScryfallClient()
+        parts = client.get_related_parts("Elvish Reclaimer")
+
+        assert parts == []
+
+    def test_with_set_code(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Avenger+of+Zendikar&set=c18",
+            json=AVENGER_RESPONSE,
+        )
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/plant123",
+            json=PLANT_TOKEN_RESPONSE,
+        )
+
+        client = ScryfallClient()
+        parts = client.get_related_parts("Avenger of Zendikar", set_code="C18")
+
+        assert len(parts) == 1
+        assert parts[0].name == "Plant"
