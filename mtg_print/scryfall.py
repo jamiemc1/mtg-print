@@ -106,6 +106,7 @@ class ScryfallClient:
         return dest
 
     def get_related_parts(self, name: str, set_code: str | None = None) -> list[CardPrinting]:
+        # Scryfall layout types: https://scryfall.com/docs/api/layouts
         extra_layouts = {"token", "emblem", "meld"}
 
         if set_code:

@@ -112,7 +112,7 @@ def build(
     client = ScryfallClient()
     cache = ImageCache()
     images: list[Path] = []
-    related_parts: dict[str, CardPrinting] = {}
+    processed_entries: list[tuple[str, str | None]] = []
     total_cards = len(decklist.entries)
 
     if interactive:
@@ -143,10 +143,7 @@ def build(
                     back = cache.get_or_download(printing, client, face_index=1)
                     images.append(back)
 
-            if extras:
-                for part in client.get_related_parts(entry.name, set_code):
-                    if part.name not in related_parts:
-                        related_parts[part.name] = part
+            processed_entries.append((entry.name, set_code))
     else:
         with typer.progressbar(decklist.entries, label="Fetching cards") as entries:
             for entry in entries:
@@ -166,19 +163,23 @@ def build(
                         back = cache.get_or_download(printing, client, face_index=1)
                         images.append(back)
 
-                if extras:
-                    for part in client.get_related_parts(entry.name, set_code):
-                        if part.name not in related_parts:
-                            related_parts[part.name] = part
+                processed_entries.append((entry.name, set_code))
 
-    if related_parts:
-        typer.echo(f"Found {len(related_parts)} related tokens/emblems")
-        for part in related_parts.values():
-            front = cache.get_or_download(part, client, face_index=0)
-            images.append(front)
-            if part.is_double_faced:
-                back = cache.get_or_download(part, client, face_index=1)
-                images.append(back)
+    if extras:
+        related_parts: dict[str, CardPrinting] = {}
+        for name, set_code in processed_entries:
+            for part in client.get_related_parts(name, set_code):
+                if part.name not in related_parts:
+                    related_parts[part.name] = part
+
+        if related_parts:
+            typer.echo(f"Found {len(related_parts)} related tokens/emblems")
+            for part in related_parts.values():
+                front = cache.get_or_download(part, client, face_index=0)
+                images.append(front)
+                if part.is_double_faced:
+                    back = cache.get_or_download(part, client, face_index=1)
+                    images.append(back)
 
     output_path = output or decklist_path.with_suffix(".pdf")
     generator = SheetGenerator()
