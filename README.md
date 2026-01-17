@@ -47,6 +47,14 @@ Displays available printings with thumbnails and lets you choose. Selections are
 mtg-print build deck.txt -s "Swords to Plowshares=ICE"
 ```
 
+### Include tokens and emblems
+
+```bash
+mtg-print build deck.txt --extras
+```
+
+Automatically includes tokens, emblems, and meld cards created by cards in your deck.
+
 ### Search card printings
 
 ```bash
