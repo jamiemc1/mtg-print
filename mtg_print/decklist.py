@@ -1,6 +1,14 @@
 import re
 from pathlib import Path
 
+from mtg_print.archidekt import (
+    extract_deck_name_from_url,
+    is_archidekt_url,
+)
+from mtg_print.archidekt import (
+    fetch_decklist as fetch_archidekt_decklist,
+)
+from mtg_print.basics import is_basic_land
 from mtg_print.models import DeckEntry, Decklist
 
 PATTERNS = [
@@ -17,25 +25,6 @@ IGNORE_PATTERNS = [
     re.compile(r"^(Built with|Exported from|Shared via|//)"),
     re.compile(r"^\s*$"),
 ]
-
-BASIC_LANDS = {
-    "Forest",
-    "Island",
-    "Plains",
-    "Mountain",
-    "Swamp",
-    "Wastes",
-    "Snow-Covered Forest",
-    "Snow-Covered Island",
-    "Snow-Covered Plains",
-    "Snow-Covered Mountain",
-    "Snow-Covered Swamp",
-    "Snow-Covered Wastes",
-}
-
-
-def is_basic_land(name: str) -> bool:
-    return name in BASIC_LANDS
 
 
 def should_ignore_line(line: str) -> bool:
@@ -72,3 +61,21 @@ def parse_decklist_string(content: str, skip_basics: bool = True) -> Decklist:
                 continue
             entries.append(entry)
     return Decklist(entries=entries)
+
+
+def load_decklist(
+    source: str, skip_basics: bool = True
+) -> tuple[Decklist, Path | None, str | None]:
+    """Load decklist from file path or Archidekt URL.
+
+    Returns (decklist, file_path, deck_name_from_url).
+    Raises FileNotFoundError for missing files, ArchidektError for URL failures.
+    """
+    if is_archidekt_url(source):
+        decklist = fetch_archidekt_decklist(source, skip_basics=skip_basics)
+        return decklist, None, extract_deck_name_from_url(source)
+    else:
+        decklist_path = Path(source)
+        if not decklist_path.exists():
+            raise FileNotFoundError(f"File not found: {decklist_path}")
+        return parse_decklist(decklist_path, skip_basics=skip_basics), decklist_path, None

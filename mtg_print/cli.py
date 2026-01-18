@@ -4,16 +4,9 @@ from typing import Annotated
 import typer
 
 from mtg_print.__version__ import __version__
-from mtg_print.archidekt import (
-    ArchidektError,
-    extract_deck_name_from_url,
-    is_archidekt_url,
-)
-from mtg_print.archidekt import (
-    fetch_decklist as fetch_archidekt_decklist,
-)
+from mtg_print.archidekt import ArchidektError, is_archidekt_url
 from mtg_print.cache import ImageCache
-from mtg_print.decklist import parse_decklist
+from mtg_print.decklist import load_decklist, parse_decklist
 from mtg_print.models import CardPrinting
 from mtg_print.preferences import (
     clear_preferences,
@@ -146,21 +139,15 @@ def build(
             overrides[name.strip()] = set_code.strip()
 
     if is_archidekt_url(decklist_source):
-        try:
-            typer.echo("Fetching decklist from Archidekt...")
-            decklist = fetch_archidekt_decklist(decklist_source)
-        except ArchidektError as error:
-            typer.echo(f"Failed to fetch Archidekt deck: {error}", err=True)
-            raise typer.Exit(1)
-        decklist_path = None
-        deck_name_from_url = extract_deck_name_from_url(decklist_source)
-    else:
-        deck_name_from_url = None
-        decklist_path = Path(decklist_source)
-        if not decklist_path.exists():
-            typer.echo(f"File not found: {decklist_path}", err=True)
-            raise typer.Exit(1)
-        decklist = parse_decklist(decklist_path)
+        typer.echo("Fetching decklist from Archidekt...")
+    try:
+        decklist, decklist_path, deck_name_from_url = load_decklist(decklist_source)
+    except FileNotFoundError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(1)
+    except ArchidektError as error:
+        typer.echo(f"Failed to fetch Archidekt deck: {error}", err=True)
+        raise typer.Exit(1)
 
     typer.echo(f"Parsed {len(decklist.entries)} unique cards ({decklist.total_cards} total)")
 
@@ -398,18 +385,14 @@ def export(
     with_set: Annotated[bool, typer.Option("--with-set", help="Include set codes")] = False,
 ) -> None:
     """Export parsed decklist to text (dev tool)."""
-    if is_archidekt_url(decklist_source):
-        try:
-            decklist = fetch_archidekt_decklist(decklist_source)
-        except ArchidektError as error:
-            typer.echo(f"Failed to fetch Archidekt deck: {error}", err=True)
-            raise typer.Exit(1)
-    else:
-        decklist_path = Path(decklist_source)
-        if not decklist_path.exists():
-            typer.echo(f"File not found: {decklist_path}", err=True)
-            raise typer.Exit(1)
-        decklist = parse_decklist(decklist_path)
+    try:
+        decklist, _, _ = load_decklist(decklist_source)
+    except FileNotFoundError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(1)
+    except ArchidektError as error:
+        typer.echo(f"Failed to fetch Archidekt deck: {error}", err=True)
+        raise typer.Exit(1)
 
     for entry in decklist.entries:
         if with_set and entry.set_override:

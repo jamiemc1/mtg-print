@@ -1,12 +1,16 @@
+from unittest.mock import patch
+
 import pytest
 
+from mtg_print.archidekt import ArchidektError
 from mtg_print.decklist import (
     is_basic_land,
+    load_decklist,
     parse_decklist_string,
     parse_line,
     should_ignore_line,
 )
-from mtg_print.models import DeckEntry
+from mtg_print.models import DeckEntry, Decklist
 
 
 class TestIsBasicLand:
@@ -174,3 +178,37 @@ Sideboard
 """
         decklist = parse_decklist_string(content)
         assert len(decklist.entries) == 0
+
+
+class TestLoadDecklist:
+    def test_loads_from_file(self, tmp_path):
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text("4 Lightning Bolt\n2 Swords to Plowshares")
+
+        decklist, file_path, url_name = load_decklist(str(deck_file))
+
+        assert len(decklist.entries) == 2
+        assert file_path == deck_file
+        assert url_name is None
+
+    def test_file_not_found_raises(self):
+        with pytest.raises(FileNotFoundError, match="File not found"):
+            load_decklist("/nonexistent/deck.txt")
+
+    def test_loads_from_archidekt_url(self):
+        mock_decklist = Decklist(entries=[DeckEntry(count=4, name="Sol Ring", set_override="lea")])
+
+        with patch("mtg_print.decklist.fetch_archidekt_decklist", return_value=mock_decklist):
+            decklist, file_path, url_name = load_decklist("https://archidekt.com/decks/123/my_deck")
+
+        assert decklist == mock_decklist
+        assert file_path is None
+        assert url_name == "my_deck"
+
+    def test_archidekt_error_propagates(self):
+        with patch(
+            "mtg_print.decklist.fetch_archidekt_decklist",
+            side_effect=ArchidektError("Deck not found"),
+        ):
+            with pytest.raises(ArchidektError, match="Deck not found"):
+                load_decklist("https://archidekt.com/decks/999")
