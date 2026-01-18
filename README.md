@@ -32,6 +32,12 @@ mtg-print build deck.txt -o output.pdf
 mtg-print build deck.txt --paper letter  # US Letter (saves as default)
 ```
 
+Or import directly from Archidekt:
+
+```bash
+mtg-print build "https://archidekt.com/decks/1799965/tovolar_werewolves"
+```
+
 Basic lands are automatically filtered. Cards default to their oldest printing. Paper defaults to A4; use `--paper letter` for US Letter (preference is saved for future builds). PDFs are configured for single-sided printing at 100% scale.
 
 ### Interactive art selection

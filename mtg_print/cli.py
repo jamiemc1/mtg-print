@@ -4,6 +4,14 @@ from typing import Annotated
 import typer
 
 from mtg_print.__version__ import __version__
+from mtg_print.archidekt import (
+    ArchidektError,
+    extract_deck_name_from_url,
+    is_archidekt_url,
+)
+from mtg_print.archidekt import (
+    fetch_decklist as fetch_archidekt_decklist,
+)
 from mtg_print.cache import ImageCache
 from mtg_print.decklist import parse_decklist
 from mtg_print.models import CardPrinting
@@ -92,7 +100,7 @@ PAPER_SIZES = ["a4", "letter"]
 
 @app.command()
 def build(
-    decklist_path: Annotated[Path, typer.Argument(help="Path to decklist file")],
+    decklist_source: Annotated[str, typer.Argument(help="Path to decklist file or Archidekt URL")],
     output: Annotated[Path | None, typer.Option("--output", "-o", help="Output PDF path")] = None,
     set_override: Annotated[
         list[str], typer.Option("--set", "-s", help="Override set for card: 'Card Name=SET'")
@@ -137,7 +145,23 @@ def build(
             name, set_code = override.rsplit("=", 1)
             overrides[name.strip()] = set_code.strip()
 
-    decklist = parse_decklist(decklist_path)
+    if is_archidekt_url(decklist_source):
+        try:
+            typer.echo("Fetching decklist from Archidekt...")
+            decklist = fetch_archidekt_decklist(decklist_source)
+        except ArchidektError as error:
+            typer.echo(f"Failed to fetch Archidekt deck: {error}", err=True)
+            raise typer.Exit(1)
+        decklist_path = None
+        deck_name_from_url = extract_deck_name_from_url(decklist_source)
+    else:
+        deck_name_from_url = None
+        decklist_path = Path(decklist_source)
+        if not decklist_path.exists():
+            typer.echo(f"File not found: {decklist_path}", err=True)
+            raise typer.Exit(1)
+        decklist = parse_decklist(decklist_path)
+
     typer.echo(f"Parsed {len(decklist.entries)} unique cards ({decklist.total_cards} total)")
 
     client = ScryfallClient()
@@ -212,7 +236,14 @@ def build(
                     back = cache.get_or_download(part, client, face_index=1)
                     images.append(back)
 
-    output_path = output or decklist_path.with_suffix(".pdf")
+    if output:
+        output_path = output
+    elif decklist_path:
+        output_path = decklist_path.with_suffix(".pdf")
+    elif deck_name_from_url:
+        output_path = Path(f"{deck_name_from_url}.pdf")
+    else:
+        output_path = Path("deck.pdf")
     generator = SheetGenerator(page_size=page_size, guides=guides)
     generator.generate(images, output_path)
     typer.echo(f"\nGenerated {output_path} with {len(images)} card images")
@@ -359,6 +390,32 @@ def check(
             typer.echo()
         typer.echo(f"{total_cards} cards checked, {issues} issues found")
         raise typer.Exit(1)
+
+
+@app.command(hidden=True)
+def export(
+    decklist_source: Annotated[str, typer.Argument(help="Path to decklist file or Archidekt URL")],
+    with_set: Annotated[bool, typer.Option("--with-set", help="Include set codes")] = False,
+) -> None:
+    """Export parsed decklist to text (dev tool)."""
+    if is_archidekt_url(decklist_source):
+        try:
+            decklist = fetch_archidekt_decklist(decklist_source)
+        except ArchidektError as error:
+            typer.echo(f"Failed to fetch Archidekt deck: {error}", err=True)
+            raise typer.Exit(1)
+    else:
+        decklist_path = Path(decklist_source)
+        if not decklist_path.exists():
+            typer.echo(f"File not found: {decklist_path}", err=True)
+            raise typer.Exit(1)
+        decklist = parse_decklist(decklist_path)
+
+    for entry in decklist.entries:
+        if with_set and entry.set_override:
+            typer.echo(f"{entry.count} {entry.name} ({entry.set_override.upper()})")
+        else:
+            typer.echo(f"{entry.count} {entry.name}")
 
 
 if __name__ == "__main__":
