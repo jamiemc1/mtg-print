@@ -29,9 +29,10 @@ mtg-print build docs/example.txt --interactive
 ```bash
 mtg-print build deck.txt
 mtg-print build deck.txt -o output.pdf
+mtg-print build deck.txt --paper letter  # US Letter (saves as default)
 ```
 
-Basic lands are automatically filtered. Cards default to their oldest printing.
+Basic lands are automatically filtered. Cards default to their oldest printing. Paper defaults to A4; use `--paper letter` for US Letter (preference is saved for future builds). PDFs are configured for single-sided printing at 100% scale.
 
 ### Interactive art selection
 
