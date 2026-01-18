@@ -2,7 +2,7 @@ import re
 
 import httpx
 
-from mtg_print.decklist import is_basic_land
+from mtg_print.basics import is_basic_land
 from mtg_print.models import DeckEntry, Decklist
 
 ARCHIDEKT_API_BASE = "https://archidekt.com/api/decks"
