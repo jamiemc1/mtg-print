@@ -98,6 +98,9 @@ def build(
     extras: Annotated[
         bool, typer.Option("--extras", "-e", help="Include tokens, emblems, and related cards")
     ] = False,
+    guides: Annotated[
+        bool, typer.Option("--guides", "-g", help="Add cutting guides at card corners")
+    ] = False,
 ) -> None:
     """Build printable PDF from decklist."""
     overrides = {}
@@ -182,7 +185,7 @@ def build(
                     images.append(back)
 
     output_path = output or decklist_path.with_suffix(".pdf")
-    generator = SheetGenerator()
+    generator = SheetGenerator(guides=guides)
     generator.generate(images, output_path)
     typer.echo(f"\nGenerated {output_path} with {len(images)} card images")
 
