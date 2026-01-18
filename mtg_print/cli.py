@@ -9,8 +9,10 @@ from mtg_print.decklist import parse_decklist
 from mtg_print.models import CardPrinting
 from mtg_print.preferences import (
     clear_preferences,
+    get_paper_size,
     get_preference,
     load_preferences,
+    save_paper_size,
     save_preference,
 )
 from mtg_print.scryfall import CardNotFoundError, ScryfallClient
@@ -85,6 +87,9 @@ def select_printing_interactive(
     return selected
 
 
+PAPER_SIZES = ["a4", "letter"]
+
+
 @app.command()
 def build(
     decklist_path: Annotated[Path, typer.Argument(help="Path to decklist file")],
@@ -101,8 +106,31 @@ def build(
     guides: Annotated[
         bool, typer.Option("--guides", "-g", help="Add cutting guides at card corners")
     ] = False,
+    paper: Annotated[
+        str | None, typer.Option("--paper", "-p", help="Paper size: a4, letter (saves as default)")
+    ] = None,
 ) -> None:
     """Build printable PDF from decklist."""
+    from reportlab.lib.pagesizes import A4, LETTER
+
+    paper_size_map = {"a4": A4, "letter": LETTER}
+
+    if paper:
+        paper_lower = paper.lower()
+        if paper_lower not in PAPER_SIZES:
+            supported = ", ".join(PAPER_SIZES)
+            typer.echo(f"Invalid paper size: {paper}. Supported: {supported}", err=True)
+            raise typer.Exit(1)
+        save_paper_size(paper_lower)
+        page_size = paper_size_map[paper_lower]
+    else:
+        saved_paper = get_paper_size()
+        if saved_paper:
+            typer.echo(f"Using saved paper size: {saved_paper.upper()}")
+            page_size = paper_size_map[saved_paper]
+        else:
+            page_size = A4
+
     overrides = {}
     for override in set_override:
         if "=" in override:
@@ -185,7 +213,7 @@ def build(
                     images.append(back)
 
     output_path = output or decklist_path.with_suffix(".pdf")
-    generator = SheetGenerator(guides=guides)
+    generator = SheetGenerator(page_size=page_size, guides=guides)
     generator.generate(images, output_path)
     typer.echo(f"\nGenerated {output_path} with {len(images)} card images")
 
@@ -240,16 +268,27 @@ def prefs(
 ) -> None:
     """Manage card art preferences."""
     if clear:
-        count = clear_preferences()
-        typer.echo(f"Cleared {count} saved preferences")
+        cleared = clear_preferences()
+        if cleared.card_art_count == 0 and cleared.paper_size is None:
+            typer.echo("No preferences to clear")
+        else:
+            if cleared.card_art_count > 0:
+                typer.echo(f"Cleared {cleared.card_art_count} card art preferences")
+            if cleared.paper_size:
+                typer.echo(f"Cleared paper size preference: {cleared.paper_size.upper()}")
     else:
         preferences = load_preferences()
-        if not preferences:
+        saved_paper = get_paper_size()
+
+        if not preferences and not saved_paper:
             typer.echo("No saved preferences")
         else:
-            typer.echo(f"Saved preferences ({len(preferences)} cards):\n")
-            for card_name, set_code in sorted(preferences.items()):
-                typer.echo(f"  {card_name} -> {set_code.upper()}")
+            if saved_paper:
+                typer.echo(f"Paper size: {saved_paper.upper()}\n")
+            if preferences:
+                typer.echo(f"Card art ({len(preferences)} cards):")
+                for card_name, set_code in sorted(preferences.items()):
+                    typer.echo(f"  {card_name} -> {set_code.upper()}")
 
 
 SUPPORTED_FORMATS = [

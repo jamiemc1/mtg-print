@@ -3,9 +3,12 @@ from unittest.mock import patch
 import pytest
 
 from mtg_print.preferences import (
+    ClearedPreferences,
     clear_preferences,
+    get_paper_size,
     get_preference,
     load_preferences,
+    save_paper_size,
     save_preference,
 )
 
@@ -96,19 +99,35 @@ class TestGetPreference:
 
 
 class TestClearPreferences:
-    def test_returns_zero_when_no_config(self, prefs_dir) -> None:
+    def test_returns_empty_when_no_config(self, prefs_dir) -> None:
         result = clear_preferences()
 
-        assert result == 0
+        assert result == ClearedPreferences(card_art_count=0, paper_size=None)
 
-    def test_returns_count_of_cleared_preferences(self, prefs_dir) -> None:
+    def test_returns_count_of_cleared_card_preferences(self, prefs_dir) -> None:
         save_preference("Card One", "SET1")
         save_preference("Card Two", "SET2")
         save_preference("Card Three", "SET3")
 
         result = clear_preferences()
 
-        assert result == 3
+        assert result.card_art_count == 3
+
+    def test_returns_cleared_paper_size(self, prefs_dir) -> None:
+        save_paper_size("letter")
+
+        result = clear_preferences()
+
+        assert result.paper_size == "letter"
+
+    def test_returns_both_card_and_paper_preferences(self, prefs_dir) -> None:
+        save_preference("Card One", "SET1")
+        save_paper_size("letter")
+
+        result = clear_preferences()
+
+        assert result.card_art_count == 1
+        assert result.paper_size == "letter"
 
     def test_removes_config_file(self, prefs_dir) -> None:
         config_dir, config_file = prefs_dir
@@ -126,3 +145,54 @@ class TestClearPreferences:
 
         result = load_preferences()
         assert result == {}
+
+
+class TestGetPaperSize:
+    def test_returns_none_when_no_config(self, prefs_dir) -> None:
+        result = get_paper_size()
+
+        assert result is None
+
+    def test_returns_none_when_no_settings_section(self, prefs_dir) -> None:
+        save_preference("Card", "SET")
+
+        result = get_paper_size()
+
+        assert result is None
+
+    def test_returns_saved_paper_size(self, prefs_dir) -> None:
+        save_paper_size("letter")
+
+        result = get_paper_size()
+
+        assert result == "letter"
+
+
+class TestSavePaperSize:
+    def test_creates_config_dir_and_file(self, prefs_dir) -> None:
+        config_dir, config_file = prefs_dir
+
+        save_paper_size("letter")
+
+        assert config_dir.exists()
+        assert config_file.exists()
+
+    def test_saves_paper_size_lowercase(self, prefs_dir) -> None:
+        save_paper_size("LETTER")
+
+        result = get_paper_size()
+        assert result == "letter"
+
+    def test_preserves_existing_card_preferences(self, prefs_dir) -> None:
+        save_preference("Card One", "SET1")
+        save_paper_size("letter")
+
+        result = load_preferences()
+        assert result == {"Card One": "set1"}
+
+    def test_overwrites_existing_paper_size(self, prefs_dir) -> None:
+        save_paper_size("a4")
+        save_paper_size("letter")
+
+        result = get_paper_size()
+        assert result == "letter"

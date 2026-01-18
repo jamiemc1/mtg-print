@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, LETTER
 
 from mtg_print.sheet import CARD_HEIGHT_MM, CARD_WIDTH_MM, GUIDE_LENGTH_MM, SheetGenerator
 
@@ -26,6 +26,10 @@ class TestSheetGeneratorDefaults:
     def test_custom_guides_enabled(self):
         generator = SheetGenerator(guides=True)
         assert generator.guides is True
+
+    def test_custom_page_size_letter(self):
+        generator = SheetGenerator(page_size=LETTER)
+        assert generator.page_size == LETTER
 
 
 class TestSheetGeneratorConstants:
