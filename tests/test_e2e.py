@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from mtg_print.archidekt import fetch_decklist as fetch_archidekt_decklist
 from mtg_print.decklist import parse_decklist
 from mtg_print.scryfall import ScryfallClient
 
@@ -53,3 +54,24 @@ class TestDecklistE2E:
         print(f"\n{format_name}: found {len(all_parts)} related parts in {elapsed:.2f}s")
         for name, layout in sorted(all_parts.items()):
             print(f"  - {name} ({layout})")
+
+
+@pytest.mark.slow
+class TestArchidektE2E:
+    def test_fetches_deck_from_archidekt(self, client: ScryfallClient) -> None:
+        url = "https://archidekt.com/decks/1799965/tovolar_werewolves"
+
+        start = time.perf_counter()
+        decklist = fetch_archidekt_decklist(url)
+        fetch_elapsed = time.perf_counter() - start
+
+        assert len(decklist.entries) > 0
+        print(f"\nArchidekt: fetched {len(decklist.entries)} cards in {fetch_elapsed:.2f}s")
+
+        start = time.perf_counter()
+        for entry in decklist.entries:
+            printing = client.get_card_by_name(entry.name, entry.set_override)
+            assert entry.name in printing.name
+        scryfall_elapsed = time.perf_counter() - start
+
+        print(f"Scryfall: verified {len(decklist.entries)} cards in {scryfall_elapsed:.2f}s")
