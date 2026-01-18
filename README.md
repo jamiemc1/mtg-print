@@ -55,6 +55,14 @@ mtg-print build deck.txt --extras
 
 Automatically includes tokens, emblems, and meld cards created by cards in your deck.
 
+### Add cutting guides
+
+```bash
+mtg-print build deck.txt --guides
+```
+
+Adds crop marks at card corners for easier cutting.
+
 ### Search card printings
 
 ```bash
