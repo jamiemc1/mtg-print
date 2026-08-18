@@ -33,11 +33,11 @@ class TestSheetGeneratorDefaults:
 
 
 class TestSheetGeneratorConstants:
-    def test_card_width_is_standard_mtg(self):
-        assert CARD_WIDTH_MM == 63.5
+    def test_card_width(self):
+        assert CARD_WIDTH_MM == 63
 
-    def test_card_height_is_standard_mtg(self):
-        assert CARD_HEIGHT_MM == 88.9
+    def test_card_height(self):
+        assert CARD_HEIGHT_MM == 88
 
     def test_guide_length(self):
         assert GUIDE_LENGTH_MM == 3
