@@ -63,9 +63,7 @@ def select_printing_interactive(
         thumbnails: list[bytes] = []
         for p in printings:
             if p.faces and p.faces[0].image_uri_small:
-                response = client.client.get(p.faces[0].image_uri_small)
-                if response.status_code == 200:
-                    thumbnails.append(response.content)
+                thumbnails.append(client.fetch_bytes(p.faces[0].image_uri_small))
         if thumbnails:
             display_images_horizontal(thumbnails)
 
@@ -255,9 +253,7 @@ def search(
         typer.echo(f"  {i}. {p.set_code.upper()} ({p.release_date}) - {p.set_name}{dfc}")
 
         if preview and p.faces and p.faces[0].image_uri_small:
-            response = client.client.get(p.faces[0].image_uri_small)
-            if response.status_code == 200:
-                display_image(response.content, width=15)
+            display_image(client.fetch_bytes(p.faces[0].image_uri_small), width=15)
 
 
 @app.command()
