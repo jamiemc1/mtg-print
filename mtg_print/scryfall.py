@@ -121,11 +121,15 @@ class ScryfallClient:
         # Filter out art series and other layouts without printable images
         return [p for p in printings if p.faces]
 
-    def download_image(self, url: str, dest: Path) -> Path:
-        dest.parent.mkdir(parents=True, exist_ok=True)
+    def fetch_bytes(self, url: str) -> bytes:
+        self._rate_limit()
         response = self.client.get(url)
         response.raise_for_status()
-        dest.write_bytes(response.content)
+        return response.content
+
+    def download_image(self, url: str, dest: Path) -> Path:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(self.fetch_bytes(url))
         return dest
 
     def get_related_parts(self, name: str, set_code: str | None = None) -> list[CardPrinting]:
