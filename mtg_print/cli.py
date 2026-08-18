@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -29,10 +30,22 @@ def version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
+def verbose_callback(value: bool) -> None:
+    """Enable debug logging for rate limiting, caching, and retries."""
+    if value:
+        logging.basicConfig(level=logging.DEBUG, format="%(name)s: %(message)s")
+
+
 @app.callback()
 def main(
     version: Annotated[
         bool, typer.Option("--version", "-v", callback=version_callback, is_eager=True)
+    ] = False,
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose", callback=verbose_callback, is_eager=True, help="Show debug output"
+        ),
     ] = False,
 ) -> None:
     """MTG proxy printing tool"""

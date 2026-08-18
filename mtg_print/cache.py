@@ -1,9 +1,11 @@
+import logging
 import shutil
-import sys
 from pathlib import Path
 
 from mtg_print.models import CardPrinting
 from mtg_print.scryfall import ScryfallClient
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_CACHE_DIR = Path.home() / ".mtg_print" / "cache"
 DEFAULT_MAX_CACHE_SIZE_GB = 2.0
@@ -45,10 +47,7 @@ class ImageCache:
             evicted += 1
 
         if evicted > 0:
-            print(
-                f"Cache exceeded {self.max_size_gb} GB, evicted {evicted} old images",
-                file=sys.stderr,
-            )
+            logger.debug(f"Cache exceeded {self.max_size_gb} GB, evicted {evicted} old images")
 
         return evicted
 
