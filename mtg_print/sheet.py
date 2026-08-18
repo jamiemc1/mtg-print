@@ -4,8 +4,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
-CARD_WIDTH_MM = 63.5
-CARD_HEIGHT_MM = 88.9
+CARD_WIDTH_MM = 63
+CARD_HEIGHT_MM = 88
 GUIDE_LENGTH_MM = 3
 
 
