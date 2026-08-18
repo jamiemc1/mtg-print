@@ -1,3 +1,5 @@
+import os
+import time
 from datetime import date
 
 import httpx
@@ -673,3 +675,70 @@ class TestScryfallClientGetRelatedParts:
         part_names = [p.name for p in parts]
         assert "Oko, Thief of Crowns" not in part_names
         assert len(parts) == 0
+
+
+class TestScryfallClientApiCache:
+    def test_cache_hit_skips_network_request(self, httpx_mock: HTTPXMock):
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Elvish+Reclaimer&set=mh1",
+            json=ELVISH_RECLAIMER_RESPONSE,
+        )
+
+        client = ScryfallClient()
+        first = client.get_card_by_name("Elvish Reclaimer", set_code="MH1")
+        second = client.get_card_by_name("Elvish Reclaimer", set_code="MH1")
+
+        assert first.name == second.name
+        assert first.set_code == second.set_code
+        assert len(httpx_mock.get_requests()) == 1
+
+    def test_expired_cache_refetches(self, httpx_mock: HTTPXMock, isolated_api_cache):
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Elvish+Reclaimer&set=mh1",
+            json=ELVISH_RECLAIMER_RESPONSE,
+        )
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Elvish+Reclaimer&set=mh1",
+            json=ELVISH_RECLAIMER_RESPONSE,
+        )
+
+        client = ScryfallClient()
+        client.get_card_by_name("Elvish Reclaimer", set_code="MH1")
+
+        for cache_file in isolated_api_cache.glob("*.json"):
+            old_time = time.time() - 90000
+            os.utime(cache_file, (old_time, old_time))
+
+        client.get_card_by_name("Elvish Reclaimer", set_code="MH1")
+
+        assert len(httpx_mock.get_requests()) == 2
+
+    def test_clear_api_cache_removes_entries(self, httpx_mock: HTTPXMock, isolated_api_cache):
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Elvish+Reclaimer&set=mh1",
+            json=ELVISH_RECLAIMER_RESPONSE,
+        )
+
+        client = ScryfallClient()
+        client.get_card_by_name("Elvish Reclaimer", set_code="MH1")
+
+        count = client.clear_api_cache()
+
+        assert count == 1
+        assert list(isolated_api_cache.glob("*.json")) == []
+
+    def test_disabled_cache_always_fetches(self, httpx_mock: HTTPXMock):
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Elvish+Reclaimer&set=mh1",
+            json=ELVISH_RECLAIMER_RESPONSE,
+        )
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Elvish+Reclaimer&set=mh1",
+            json=ELVISH_RECLAIMER_RESPONSE,
+        )
+
+        client = ScryfallClient(api_cache_dir=None)
+        client.get_card_by_name("Elvish Reclaimer", set_code="MH1")
+        client.get_card_by_name("Elvish Reclaimer", set_code="MH1")
+
+        assert len(httpx_mock.get_requests()) == 2
