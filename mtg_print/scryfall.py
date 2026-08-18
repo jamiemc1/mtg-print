@@ -16,6 +16,7 @@ class CardNotFoundError(Exception):
 
 SCRYFALL_API = "https://api.scryfall.com"
 REQUEST_DELAY = 0.1
+MAX_RETRIES = 3
 
 
 class ScryfallClient:
@@ -33,8 +34,27 @@ class ScryfallClient:
     def _get(
         self, endpoint: str, params: dict[str, str] | None = None, card_name: str | None = None
     ) -> dict[str, Any]:
-        self._rate_limit()
-        response = self.client.get(f"{SCRYFALL_API}{endpoint}", params=params)
+        for attempt in range(MAX_RETRIES):
+            self._rate_limit()
+            response = self.client.get(f"{SCRYFALL_API}{endpoint}", params=params)
+
+            if response.status_code != 429:
+                break
+
+            retry_after = response.headers.get("Retry-After")
+            print(
+                f"[429] Rate limited on {endpoint} "
+                f"(attempt {attempt + 1}/{MAX_RETRIES})\n"
+                f"  Headers: {dict(response.headers)}"
+            )
+            if retry_after is None:
+                response.raise_for_status()
+            delay = int(retry_after)
+            print(f"  Waiting {delay} s before retry...")
+            time.sleep(delay)
+        else:
+            response.raise_for_status()
+
         if response.status_code == 404 and card_name:
             raise CardNotFoundError(card_name)
         response.raise_for_status()
