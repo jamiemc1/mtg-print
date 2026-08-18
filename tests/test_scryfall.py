@@ -742,3 +742,78 @@ class TestScryfallClientApiCache:
         client.get_card_by_name("Elvish Reclaimer", set_code="MH1")
 
         assert len(httpx_mock.get_requests()) == 2
+
+
+class TestScryfallClientRetry:
+    def test_retries_on_429_then_succeeds(self, httpx_mock: HTTPXMock, monkeypatch):
+        monkeypatch.setattr("mtg_print.scryfall.time.sleep", lambda _: None)
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Elvish+Reclaimer&set=mh1",
+            status_code=429,
+            headers={"Retry-After": "1"},
+        )
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Elvish+Reclaimer&set=mh1",
+            json=ELVISH_RECLAIMER_RESPONSE,
+        )
+
+        client = ScryfallClient(api_cache_dir=None)
+        printing = client.get_card_by_name("Elvish Reclaimer", set_code="MH1")
+
+        assert printing.name == "Elvish Reclaimer"
+        assert len(httpx_mock.get_requests()) == 2
+
+    def test_raises_after_retries_exhausted(self, httpx_mock: HTTPXMock, monkeypatch):
+        monkeypatch.setattr("mtg_print.scryfall.time.sleep", lambda _: None)
+        for _ in range(3):
+            httpx_mock.add_response(
+                url="https://api.scryfall.com/cards/named?exact=Elvish+Reclaimer&set=mh1",
+                status_code=429,
+                headers={"Retry-After": "1"},
+            )
+
+        client = ScryfallClient(api_cache_dir=None)
+        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+            client.get_card_by_name("Elvish Reclaimer", set_code="MH1")
+
+        assert exc_info.value.response.status_code == 429
+
+    def test_raises_immediately_without_retry_after_header(
+        self, httpx_mock: HTTPXMock, monkeypatch
+    ):
+        monkeypatch.setattr("mtg_print.scryfall.time.sleep", lambda _: None)
+        httpx_mock.add_response(
+            url="https://api.scryfall.com/cards/named?exact=Elvish+Reclaimer&set=mh1",
+            status_code=429,
+        )
+
+        client = ScryfallClient(api_cache_dir=None)
+        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+            client.get_card_by_name("Elvish Reclaimer", set_code="MH1")
+
+        assert exc_info.value.response.status_code == 429
+        assert len(httpx_mock.get_requests()) == 1
+
+
+class TestScryfallClientFetchBytes:
+    def test_returns_response_content(self, httpx_mock: HTTPXMock):
+        fake_data = b"\x89PNG\r\n\x1a\nfake image"
+        httpx_mock.add_response(
+            url="https://cards.scryfall.io/small/mh1/158.jpg",
+            content=fake_data,
+        )
+
+        client = ScryfallClient(api_cache_dir=None)
+        result = client.fetch_bytes("https://cards.scryfall.io/small/mh1/158.jpg")
+
+        assert result == fake_data
+
+    def test_raises_on_http_error(self, httpx_mock: HTTPXMock):
+        httpx_mock.add_response(
+            url="https://cards.scryfall.io/small/mh1/158.jpg",
+            status_code=500,
+        )
+
+        client = ScryfallClient(api_cache_dir=None)
+        with pytest.raises(httpx.HTTPStatusError):
+            client.fetch_bytes("https://cards.scryfall.io/small/mh1/158.jpg")
