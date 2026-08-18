@@ -24,20 +24,27 @@ API_CACHE_DIR = Path.home() / ".mtg_print" / "api_cache"
 
 
 class ScryfallClient:
-    def __init__(self, http_client: httpx.Client | None = None):
+    def __init__(
+        self,
+        http_client: httpx.Client | None = None,
+        api_cache_dir: Path | None = API_CACHE_DIR,
+    ):
         self.client = http_client or httpx.Client(timeout=30.0)
         self.client.headers["User-Agent"] = "MTGPrint/1.0"
         self._last_request: float = 0
-        self._api_cache_dir = API_CACHE_DIR
-        self._api_cache_dir.mkdir(parents=True, exist_ok=True)
+        self._api_cache_dir = api_cache_dir
+        if self._api_cache_dir:
+            self._api_cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def _cache_key(self, endpoint: str, params: dict[str, str] | None) -> Path:
+    def _cache_key(self, endpoint: str, params: dict[str, str] | None) -> Path | None:
+        if not self._api_cache_dir:
+            return None
         raw = endpoint + json.dumps(params, sort_keys=True, default=str)
         digest = hashlib.sha256(raw.encode()).hexdigest()[:16]
         return self._api_cache_dir / f"{digest}.json"
 
-    def _read_cache(self, cache_path: Path) -> dict[str, Any] | None:
-        if not cache_path.exists():
+    def _read_cache(self, cache_path: Path | None) -> dict[str, Any] | None:
+        if not cache_path or not cache_path.exists():
             return None
         age = time.time() - cache_path.stat().st_mtime
         if age > API_CACHE_TTL_SECONDS:
@@ -45,10 +52,14 @@ class ScryfallClient:
             return None
         return json.loads(cache_path.read_text())
 
-    def _write_cache(self, cache_path: Path, data: dict[str, Any]) -> None:
+    def _write_cache(self, cache_path: Path | None, data: dict[str, Any]) -> None:
+        if not cache_path:
+            return
         cache_path.write_text(json.dumps(data))
 
     def clear_api_cache(self) -> int:
+        if not self._api_cache_dir:
+            return 0
         files = list(self._api_cache_dir.glob("*.json"))
         for f in files:
             f.unlink()
