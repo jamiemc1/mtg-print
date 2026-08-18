@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import time
 from datetime import date
 from pathlib import Path
@@ -8,6 +9,8 @@ from typing import Any
 import httpx
 
 from mtg_print.models import CardFace, CardPrinting
+
+logger = logging.getLogger(__name__)
 
 
 class CardNotFoundError(Exception):
@@ -86,15 +89,13 @@ class ScryfallClient:
                 break
 
             retry_after = response.headers.get("Retry-After")
-            print(
-                f"[429] Rate limited on {endpoint} "
-                f"(attempt {attempt + 1}/{MAX_RETRIES})\n"
-                f"  Headers: {dict(response.headers)}"
-            )
             if retry_after is None:
                 response.raise_for_status()
             delay = int(retry_after)
-            print(f"  Waiting {delay} s before retry...")
+            logger.debug(
+                f"Rate limited on {endpoint}, waiting {delay} s"
+                f" (attempt {attempt + 1}/{MAX_RETRIES})"
+            )
             time.sleep(delay)
         else:
             response.raise_for_status()
