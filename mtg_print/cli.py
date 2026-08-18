@@ -267,6 +267,8 @@ def cache(
     if clear:
         count = image_cache.clear()
         typer.echo(f"Cleared {count} cached images")
+        api_count = ScryfallClient().clear_api_cache()
+        typer.echo(f"Cleared {api_count} cached API responses")
     elif stats:
         s = image_cache.stats()
         size_mb = s["total_size_bytes"] / (1024 * 1024)
