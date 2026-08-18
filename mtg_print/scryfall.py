@@ -1,3 +1,5 @@
+import hashlib
+import json
 import time
 from datetime import date
 from pathlib import Path
@@ -17,6 +19,8 @@ class CardNotFoundError(Exception):
 SCRYFALL_API = "https://api.scryfall.com"
 REQUEST_DELAY = 0.1
 MAX_RETRIES = 3
+API_CACHE_TTL_SECONDS = 86400
+API_CACHE_DIR = Path.home() / ".mtg_print" / "api_cache"
 
 
 class ScryfallClient:
@@ -24,6 +28,31 @@ class ScryfallClient:
         self.client = http_client or httpx.Client(timeout=30.0)
         self.client.headers["User-Agent"] = "MTGPrint/1.0"
         self._last_request: float = 0
+        self._api_cache_dir = API_CACHE_DIR
+        self._api_cache_dir.mkdir(parents=True, exist_ok=True)
+
+    def _cache_key(self, endpoint: str, params: dict[str, str] | None) -> Path:
+        raw = endpoint + json.dumps(params, sort_keys=True, default=str)
+        digest = hashlib.sha256(raw.encode()).hexdigest()[:16]
+        return self._api_cache_dir / f"{digest}.json"
+
+    def _read_cache(self, cache_path: Path) -> dict[str, Any] | None:
+        if not cache_path.exists():
+            return None
+        age = time.time() - cache_path.stat().st_mtime
+        if age > API_CACHE_TTL_SECONDS:
+            cache_path.unlink()
+            return None
+        return json.loads(cache_path.read_text())
+
+    def _write_cache(self, cache_path: Path, data: dict[str, Any]) -> None:
+        cache_path.write_text(json.dumps(data))
+
+    def clear_api_cache(self) -> int:
+        files = list(self._api_cache_dir.glob("*.json"))
+        for f in files:
+            f.unlink()
+        return len(files)
 
     def _rate_limit(self) -> None:
         elapsed = time.time() - self._last_request
@@ -34,6 +63,10 @@ class ScryfallClient:
     def _get(
         self, endpoint: str, params: dict[str, str] | None = None, card_name: str | None = None
     ) -> dict[str, Any]:
+        cache_path = self._cache_key(endpoint, params)
+        cached = self._read_cache(cache_path)
+        if cached is not None:
+            return cached
         for attempt in range(MAX_RETRIES):
             self._rate_limit()
             response = self.client.get(f"{SCRYFALL_API}{endpoint}", params=params)
@@ -58,7 +91,9 @@ class ScryfallClient:
         if response.status_code == 404 and card_name:
             raise CardNotFoundError(card_name)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        self._write_cache(cache_path, data)
+        return data
 
     def _parse_printing(self, data: dict[str, Any]) -> CardPrinting:
         faces: list[CardFace] = []
